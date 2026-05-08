@@ -15,7 +15,10 @@ ai-course-labs/
 ├── week1/ # Лабораторная №1: Настройка среды
 ├── week2/ # Лабораторная №2: AI-агенты
 ├── week3/ # Лабораторная №3: Multi-Agent
-└── ...
+├── week4/ # Лабораторная №4: Workflow Automation — Автоматизация рабочих процессов с AI
+├── week5/ # Лабораторная №5: RAG (Retrieval-Augmented Generation) и работа с документами
+├── week6/ # Лабораторная №6: Нейро-символьный AI — Гибридные интеллектуальные системы
+└── week7/ # Лабораторная №7: Нейроморфные вычисления и импульсные нейронные сети
 ```
 
 ## Быстрый старт
@@ -31,5 +34,5 @@ cd week1
 pip install -r requirements.txt
 
 # Запуск
-python src/agent_core.py
+python src/agent_core.py # или main.py в дальнейшем
 ```
