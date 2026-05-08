@@ -1,0 +1,109 @@
+{
+  "name": "Интеллектуальный Видеомониторинг: Обработка инцидентов",
+  "nodes":[
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "security-incident",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "name": "Camera Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position":[200, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://llm.api.cloud.yandex.net/foundationModels/v1/completion",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters":[
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Authorization", "value": "Bearer YANDEX_IAM_TOKEN" },
+            { "name": "x-folder-id", "value": "YANDEX_FOLDER_ID" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"modelUri\": \"gpt://YANDEX_FOLDER_ID/yandexgpt/latest\",\n  \"completionOptions\": {\n    \"stream\": false,\n    \"temperature\": 0.1,\n    \"maxTokens\": 1000\n  },\n  \"messages\":[\n    {\n      \"role\": \"system\",\n      \"text\": \"Ты ИИ-аналитик видеомониторинга. Оцени угрозу от YOLO. Верни СТРОГО валидный JSON без markdown: {\\\"level\\\": \\\"critical\\\", \\\"recommendation\\\": \\\"совет охраны\\\"}\"\n    },\n    {\n      \"role\": \"user\",\n      \"text\": \"{{ JSON.stringify($json.body) }}\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "name": "YandexGPT Threat Analyzer",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position":[450, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.result.alternatives[0].message.text }}",
+              "operation": "contains",
+              "value2": "critical"
+            }
+          ]
+        }
+      },
+      "name": "IF Critical Threat",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position":[700, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://testwork.username.workers.dev/botSOC_CHAT_ID:AAFJMwdzdMo_kAJa7CUW0PtHs8XdE-dB1J0/sendMessage",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters":[
+            {
+              "name": "chat_id",
+              "value": "SOC_CHAT_ID"
+            },
+            {
+              "name": "text",
+              "value": "=🚨 КРИТИЧЕСКАЯ УГРОЗА!\nКамера: {{ $('Camera Webhook').item.json.body.camera_id }}\nОбъект: {{ $('Camera Webhook').item.json.body.object_class }}\nЗона: {{ $('Camera Webhook').item.json.body.geozone }}\n\nРекомендация ИИ: {{ JSON.parse($('YandexGPT Threat Analyzer').item.json.result.alternatives[0].message.text.replace(/```json|```/g, '')).recommendation }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Telegram Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [950, 180]
+    },
+    {
+      "parameters": {},
+      "name": "Игнорировать (Ложная тревога)",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [950, 420]
+    },
+    {
+      "parameters": {},
+      "name": "Конец (Алерт отправлен)",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position":[1200, 180]
+    }
+  ],
+  "connections": {
+    "Camera Webhook": {
+      "main": [[ { "node": "YandexGPT Threat Analyzer", "type": "main", "index": 0 } ] ]
+    },
+    "YandexGPT Threat Analyzer": {
+      "main": [[ { "node": "IF Critical Threat", "type": "main", "index": 0 } ] ]
+    },
+    "IF Critical Threat": {
+      "main": [[ { "node": "Telegram Alert", "type": "main", "index": 0 } ],[ { "node": "Игнорировать (Ложная тревога)", "type": "main", "index": 0 } ]
+      ]
+    },
+    "Telegram Alert": {
+      "main": [[ { "node": "Конец (Алерт отправлен)", "type": "main", "index": 0 } ] ]
+    }
+  }
+}
